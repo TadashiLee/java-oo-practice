@@ -14,21 +14,25 @@ public class Main {
         //管理员账户设置
         Admin admin = new Admin("Admin","123");
         List<HotSearch> hotSearch = new ArrayList<HotSearch>();
-        hotSearch.add(new HotSearch("我在那儿",1));
+        List<HotSearch> buyList = new ArrayList<HotSearch>();
+//        hotSearch.add(new HotSearch("我在那儿",1));
+//        hotSearch.add(new HotSearch("我是热搜第二",1));
+//        hotSearch.add(new HotSearch("我是热搜第一",1));
+//        hotSearch.add(new HotSearch("我是被购买的",1));
         List<Users> users = new ArrayList<Users>();
         //登录界面
         String name = LoadIn(admin, users);
         //热搜主界面
         while (true){
             if(name.equals("Admin")){
-                name = AdminInterface(admin, hotSearch, users, name);
+                name = AdminInterface(admin, hotSearch, buyList,users, name);
             }else {
-                name = UsersInterface(admin, hotSearch, users, name);
+                name = UsersInterface(admin, hotSearch, buyList, users, name);
             }
         }
     }
 
-    private static String UsersInterface(Admin admin, List<HotSearch> hotSearch, List<Users> users, String name) throws IOException {
+    private static String UsersInterface(Admin admin, List<HotSearch> hotSearch, List<HotSearch> buyList, List<Users> users, String name) throws IOException {
         System.out.println("-----欢迎【" + name + "】来到热搜排行榜-----");
         System.out.println("1 查看热搜排行榜");
         System.out.println("2 给热搜事件投票");
@@ -42,14 +46,15 @@ public class Main {
             case "1":
                 //查看热搜
                 System.out.println("-排名-----事件-----热度-");
-                ViewHotSearch(hotSearch);
+                ViewHotSearch(hotSearch, buyList);
                 break;
             case "2":
                 //投票热搜
-                VoteHotSearch(name, hotSearch, users);
+                VoteHotSearch(name, hotSearch, buyList, users);
                 break;
             case "3":
                 //购买热搜
+                BuyHotSearch(hotSearch, buyList);
                 break;
             case "4":
                 //添加热搜
@@ -66,7 +71,7 @@ public class Main {
         return name;
     }
 
-    private static String AdminInterface(Admin admin, List<HotSearch> hotSearch, List<Users> users, String name) throws IOException {
+    private static String AdminInterface(Admin admin, List<HotSearch> hotSearch, List<HotSearch> buyList, List<Users> users, String name) throws IOException {
         System.out.println("-----欢迎【" + name + "】来到热搜管理系统-----");
         System.out.println("1 查看热搜排行榜");
         System.out.println("2 添加热搜");
@@ -79,7 +84,7 @@ public class Main {
             case "1":
                 //查看热搜
                 System.out.println("-排名-----事件-----热度-");
-                ViewHotSearch(hotSearch);
+                ViewHotSearch(hotSearch, buyList);
                 break;
             case "2":
                 //添加热搜
@@ -166,13 +171,20 @@ public class Main {
         return name;
     }
 
-    private static void ViewHotSearch(List<HotSearch> hotSearch) {
-        Stream.iterate(0,i -> i+1).limit(hotSearch.size()).forEach(i -> {
-            System.out.println("  " + (i+1) + "    "+ hotSearch.get(i).getName() + "    "+ hotSearch.get(i).getPoll());
+    private static void ViewHotSearch(List<HotSearch> hotSearch , List<HotSearch> buyList) {
+        List<HotSearch> viewList = new ArrayList<HotSearch>();
+        Stream.iterate(0, i -> i+1).limit(hotSearch.size()).forEach(i ->{
+            viewList.add(hotSearch.get(i));
+        } );
+        Stream.iterate(0, i -> i+1).limit(buyList.size()).forEach(i -> {
+            viewList.add(buyList.get(i).getRank()-1, buyList.get(i));
+        });
+        Stream.iterate(0,i -> i+1).limit(viewList.size()).forEach(i -> {
+            System.out.println("  " + (i+1) + "    "+ viewList.get(i).getName() + "    "+ viewList.get(i).getPoll());
         });
     }
 
-    private static void VoteHotSearch(String name, List<HotSearch> hotSearch, List<Users> users) throws IOException {
+    private static void VoteHotSearch(String name, List<HotSearch> hotSearch, List<HotSearch> buyList, List<Users> users) throws IOException {
         Integer poll = 0;
         for(Users i : users){
             if (i.getName().equals(name)){
@@ -189,6 +201,12 @@ public class Main {
                 break;
             }
         }
+        for(HotSearch i: buyList){
+            if(i.getName().equals(voteName)){
+                flag = true;
+                break;
+            }
+        }
         if (flag){
             System.out.println("请输入你要投票的热搜名称（您还有" + poll + "票）");
             String votePoll = voteInput.readLine();
@@ -200,11 +218,19 @@ public class Main {
                 for(Users i : users){
                     if (i.getName().equals(name)){
                         i.setUserPoll(i.getUserPoll()-votePollInt);
+                        break;
                     }
                 }
                 for(HotSearch i: hotSearch){
                     if (i.getName().equals(voteName)){
                         i.setPoll(i.getLevel()*(i.getPoll()+votePollInt));
+                        break;
+                    }
+                }
+                for(HotSearch i: buyList){
+                    if (i.getName().equals(voteName)){
+                        i.setPoll(i.getLevel()*(i.getPoll()+votePollInt));
+                        break;
                     }
                 }
                 Collections.sort(hotSearch);
@@ -214,7 +240,7 @@ public class Main {
         }
     }
 
-    private static  void AddHotSearch(List<HotSearch> hotSearches, int level) throws IOException {
+    private static void AddHotSearch(List<HotSearch> hotSearches, int level) throws IOException {
         boolean flag = false;
         System.out.println("请输入你要添加的热搜名称:");
         BufferedReader hotInput = new BufferedReader(new InputStreamReader(System.in));
@@ -229,6 +255,118 @@ public class Main {
             System.out.println("该热搜已存在，不可重复添加");
         }else {
             hotSearches.add(new HotSearch(hotName, level));
+        }
+    }
+
+    private static void BuyHotSearch(List<HotSearch> hotSearches, List<HotSearch> buyList) throws IOException {
+        BufferedReader buyBR = new BufferedReader(new InputStreamReader(System.in));
+        System.out.println("请输入你要购买的热搜名称:");
+        String buyChoice = buyBR.readLine();
+        System.out.println("请输入你要购买的热搜排名:");
+        Integer buyRank = new Integer(buyBR.readLine());
+        System.out.println("请输入你要购买的热搜金额:");
+        Integer buyPrice = new Integer(buyBR.readLine());
+        boolean flagC = false;
+        boolean flagR = false;
+        for(HotSearch i: hotSearches){
+            if (i.getName().equals(buyChoice)){
+                flagC = true;
+                break;
+            }
+        }
+        for(HotSearch i: buyList){
+            if (i.getName().equals(buyChoice)){
+                flagC = true;
+                break;
+            }
+        }
+        if (buyRank <= (buyList.size()+hotSearches.size())){
+            flagR = true;
+        }
+        if (!flagC){
+            System.out.println("输入热搜不存在，请重新操作！");
+        }
+        if(!flagR){
+            System.out.println("输入排名过大，请重新操作！");
+        }
+        if (flagC && flagR){
+            BuyMetod(hotSearches, buyList, buyChoice, buyRank, buyPrice);
+        }
+    }
+
+    private static void BuyMetod(List<HotSearch> hotSearches, List<HotSearch> buyList, String buyChoice, Integer buyRank, Integer buyPrice) {
+        boolean flag = true;
+        if (!buyList.isEmpty()){
+            //查找当前排名是否被购买
+            for (int i = 0; i < buyList.size(); i++) {
+                if (buyList.get(i).getRank().equals(buyRank)){
+                    if (buyPrice <= buyList.get(i).getPrice()){
+                        System.out.println("金额过低，购买失败！");
+                        flag = false;
+                    }else {
+                        boolean flagB = true;
+                        for (int j = 0; j < buyList.size(); j++) {
+                            if (buyList.get(j).getName().equals(buyChoice) && buyList.get(j).getRank().equals(buyRank)){
+                                buyList.get(j).setPrice(buyPrice);
+                                flagB = false;
+                                flag = false;
+                                break;
+                            }else if (buyList.get(j).getName().equals(buyChoice) && !buyList.get(j).getRank().equals(buyRank)){
+                                buyList.get(j).setPrice(buyPrice);
+                                buyList.get(j).setRank(buyRank);
+                                buyList.remove(i);
+                                flagB = false;
+                                flag = false;
+                                break;
+                            }
+                        }
+                        if (flagB){
+                            buyList.remove(i);
+                            for (int j = 0; j < hotSearches.size(); j++) {
+                                if (hotSearches.get(j).getName().equals(buyChoice)){
+                                    hotSearches.get(j).setPrice(buyPrice);
+                                    hotSearches.get(j).setRank(buyRank);
+                                    buyList.add(hotSearches.remove(j));
+                                    flag = false;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+            //没有被购买查看被购买的热搜在那个List中，然后添加到buyList中
+            //查看是否再buyList中,在内的话，改变价格和排名即可
+
+            for (int i = 0; i < buyList.size(); i++) {
+                if (buyList.get(i).getName().equals(buyChoice)){
+                    buyList.get(i).setPrice(buyPrice);
+                    buyList.get(i).setRank(buyRank);
+                    flag = false;
+                    break;
+                }
+            }
+            //不在buyList中则找到hotSearchs中该对象，删除该对象，并添加到buyList中
+            if (flag){
+                for (int i = 0; i < hotSearches.size(); i++) {
+                    if (hotSearches.get(i).getName().equals(buyChoice)){
+                        hotSearches.get(i).setPrice(buyPrice);
+                        hotSearches.get(i).setRank(buyRank);
+                        buyList.add(hotSearches.remove(i));
+                        break;
+                    }
+                }
+            }
+        }else {
+            for (int i = 0; i < hotSearches.size(); i++) {
+                if (hotSearches.get(i).getName().equals(buyChoice)){
+                    hotSearches.get(i).setPrice(buyPrice);
+                    hotSearches.get(i).setRank(buyRank);
+                    buyList.add(hotSearches.remove(i));
+                    break;
+                }
+            }
         }
     }
 }
